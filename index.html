@@ -1,0 +1,204 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>党建信息平台</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ===== 侧边栏 ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">&#9733;</div>
+        <h1>党建信息平台</h1>
+        <p>Party Building Platform</p>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">&#127968;</span>
+          <span>首页仪表盘</span>
+        </div>
+        <div class="nav-item" data-page="members">
+          <span class="nav-icon">&#128101;</span>
+          <span>党员管理</span>
+        </div>
+        <div class="nav-item" data-page="timeline">
+          <span class="nav-icon">&#128197;</span>
+          <span>培养历程</span>
+        </div>
+        <div class="nav-item" data-page="calendar">
+          <span class="nav-icon">&#128197;</span>
+          <span>思政日历</span>
+        </div>
+        <div class="nav-item" data-page="portrait">
+          <span class="nav-icon">&#128202;</span>
+          <span>数字画像</span>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        2026 党建信息平台 v1.0
+      </div>
+    </aside>
+
+    <!-- ===== 主内容 ===== -->
+    <main class="main-content">
+      <header class="page-header">
+        <h2 id="page-title">首页仪表盘</h2>
+        <p id="page-desc">党组织建设总体情况概览</p>
+      </header>
+
+      <div class="page-content">
+        <!-- ===== 首页 ===== -->
+        <div class="page active" id="page-dashboard">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">党员总数</div>
+              <div class="stat-value" id="stat-total">0</div>
+              <div class="stat-sub">全体在册党员</div>
+            </div>
+          </div>
+          <div class="stats-grid" id="stat-details"></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div class="table-container">
+              <table>
+                <thead><tr><th>姓名</th><th>部门</th><th>当前阶段</th><th>最近更新</th><th>进度</th></tr></thead>
+                <tbody id="recent-members"></tbody>
+              </table>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead><tr><th>日期</th><th>节日/纪念日</th><th>类型</th></tr></thead>
+                <tbody id="upcoming-events"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 党员管理 ===== -->
+        <div class="page" id="page-members">
+          <div style="margin-bottom:16px">
+            <input id="search-input" type="text" placeholder="搜索姓名或部门..." style="padding:8px 16px;border:1px solid #ddd;border-radius:20px;font-size:14px;width:300px;outline:none">
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>姓名</th><th>性别</th><th>部门</th><th>当前阶段</th><th>入党时间</th><th>联系电话</th><th>操作</th></tr>
+              </thead>
+              <tbody id="members-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== 培养历程 ===== -->
+        <div class="page" id="page-timeline">
+          <div class="member-selector" id="member-selector"></div>
+
+          <div style="background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:24px">
+            <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f0">
+              <h3 id="timeline-member-name" style="display:inline;font-size:18px"></h3>
+              <span style="color:#888;margin:0 12px">|</span>
+              <span id="timeline-member-dept" style="color:#666"></span>
+              <span style="color:#888;margin:0 12px">|</span>
+              <span style="font-size:13px;color:#888">当前阶段：</span>
+              <span id="timeline-member-current" class="stage-tag stage-0"></span>
+            </div>
+            <div class="timeline" id="timeline-container"></div>
+          </div>
+        </div>
+
+        <!-- ===== 思政日历 ===== -->
+        <div class="page" id="page-calendar">
+          <div class="calendar-container">
+            <div class="calendar-header">
+              <button class="cal-nav" id="cal-prev">&lsaquo;</button>
+              <span class="cal-title" id="cal-title">2026年6月</span>
+              <div style="display:flex;gap:8px">
+                <button class="cal-nav" id="cal-today" style="font-size:13px">本月</button>
+                <button class="cal-nav" id="cal-next">&rsaquo;</button>
+              </div>
+            </div>
+            <div class="calendar-weekdays">
+              <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+            <div class="calendar-days" id="cal-days"></div>
+            <div class="calendar-legend">
+              <div class="legend-item"><span class="legend-dot type-party"></span> 党的纪念</div>
+              <div class="legend-item"><span class="legend-dot type-holiday"></span> 法定假日</div>
+              <div class="legend-item"><span class="legend-dot type-festival"></span> 传统节日</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 数字画像 ===== -->
+        <div class="page" id="page-portrait">
+          <div id="stats-summary"></div>
+
+          <div class="portrait-grid">
+            <div class="chart-card">
+              <h3>发展阶段分布</h3>
+              <div class="chart-container" id="stage-chart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>材料提交进度</h3>
+              <div class="materials-table">
+                <table>
+                  <thead>
+                    <tr><th>姓名</th><th>阶段</th><th>阶段数</th><th>材料数</th><th>进度</th><th>完成率</th></tr>
+                  </thead>
+                  <tbody id="material-progress-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== 党员详情弹窗 ===== -->
+  <div class="modal-overlay" id="member-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-name">姓名</h3>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f0f0f0">
+          <div class="info-row">
+            <span class="info-label">性别</span>
+            <span class="info-value" id="modal-gender">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">出生年月</span>
+            <span class="info-value" id="modal-birth">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">所属部门</span>
+            <span class="info-value" id="modal-dept">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">联系电话</span>
+            <span class="info-value" id="modal-phone">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">当前阶段</span>
+            <span class="info-value" id="modal-stage">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">入党时间</span>
+            <span class="info-value" id="modal-joindate">-</span>
+          </div>
+        </div>
+        <h4 style="margin-bottom:16px;color:#C41E3A">培养历程时间线</h4>
+        <div class="timeline" id="modal-timeline"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
