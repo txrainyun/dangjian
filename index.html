@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -22,7 +22,7 @@
         <div class="nav-item" data-page="calendar"><span class="nav-icon">&#128197;</span><span>思政日历</span></div>
         <div class="nav-item" data-page="portrait"><span class="nav-icon">&#128202;</span><span>数字画像</span></div>
       </nav>
-      <div class="sidebar-footer">2026 党建信息平台 v2.0</div>
+      <div class="sidebar-footer">2026 党建信息平台 v2.1</div>
     </aside>
 
     <!-- ===== 主内容 ===== -->
@@ -34,7 +34,7 @@
 
       <div class="page-content">
 
-        <!-- ==================== 首页仪表盘 ==================== -->
+        <!-- ===== 首页仪表盘 ===== -->
         <div class="page active" id="page-dashboard">
           <div class="stats-grid">
             <div class="stat-card"><div class="stat-label">党员总数</div><div class="stat-value" id="stat-total">0</div><div class="stat-sub">全体在册党员</div></div>
@@ -66,7 +66,7 @@
           </div>
         </div>
 
-        <!-- ==================== 党员管理 ==================== -->
+        <!-- ===== 党员管理 ===== -->
         <div class="page" id="page-members">
           <div style="margin-bottom:16px">
             <input id="search-input" type="text" placeholder="搜索姓名或部门..." style="padding:8px 16px;border:1px solid #ddd;border-radius:20px;font-size:14px;width:300px;outline:none">
@@ -79,7 +79,7 @@
           </div>
         </div>
 
-        <!-- ==================== 培养历程 ==================== -->
+        <!-- ===== 培养历程 ===== -->
         <div class="page" id="page-timeline">
           <div class="member-selector" id="member-selector"></div>
           <div style="background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:24px">
@@ -95,10 +95,10 @@
           </div>
         </div>
 
-        <!-- ==================== 思政日历 ==================== -->
+        <!-- ===== 思政日历 ===== -->
         <div class="page" id="page-calendar">
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <button class="btn btn-primary" id="add-event-btn">&#43; 添加日程</button>
+            <button class="btn btn-primary" id="add-event-btn">+ 添加日程</button>
           </div>
           <div class="calendar-container">
             <div class="calendar-header">
@@ -123,7 +123,7 @@
           </div>
         </div>
 
-        <!-- ==================== 数字画像 ==================== -->
+        <!-- ===== 数字画像 ===== -->
         <div class="page" id="page-portrait">
           <div id="stats-summary"></div>
 
@@ -146,7 +146,7 @@
           <div class="chart-card">
             <div class="volunteer-header">
               <h3 style="font-size:15px;font-weight:600;color:#333">志愿活动记录</h3>
-              <button class="btn btn-primary btn-sm" id="add-volunteer-btn">&#43; 添加活动</button>
+              <button class="btn btn-primary btn-sm" id="add-volunteer-btn">+ 添加活动</button>
             </div>
             <div class="table-container" style="box-shadow:none;border:1px solid #f0f0f0">
               <table>
@@ -176,7 +176,7 @@
           <div class="info-row"><span class="info-label">当前阶段</span><span class="info-value" id="modal-stage">-</span></div>
           <div class="info-row"><span class="info-label">入党时间</span><span class="info-value" id="modal-joindate">-</span></div>
         </div>
-        <h4 style="margin-bottom:12px;color:#C41E3A;font-size:15px">培养历程 &amp; 提交材料</h4>
+        <h4 style="margin-bottom:12px;color:#C41E3A;font-size:15px">培养历程 与 提交材料</h4>
         <div class="timeline" id="modal-timeline"></div>
         <h4 style="margin-top:20px;margin-bottom:12px;color:#C41E3A;font-size:15px">志愿活动记录</h4>
         <div id="modal-volunteers"></div>
@@ -205,24 +205,9 @@
         <button class="modal-close" id="event-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>日期</label>
-          <input type="date" id="event-date" value="2026-06-07">
-        </div>
-        <div class="form-group">
-          <label>日程名称</label>
-          <input type="text" id="event-name" placeholder="请输入日程名称">
-        </div>
-        <div class="form-group">
-          <label>类型</label>
-          <select id="event-type">
-            <option value="custom">自定义</option>
-            <option value="meeting">党的会议</option>
-            <option value="party">党的纪念</option>
-            <option value="holiday">法定假日</option>
-            <option value="festival">传统节日</option>
-          </select>
-        </div>
+        <div class="form-group"><label>日期</label><input type="date" id="event-date" value="2026-06-07"></div>
+        <div class="form-group"><label>日程名称</label><input type="text" id="event-name" placeholder="请输入日程名称"></div>
+        <div class="form-group"><label>类型</label><select id="event-type"><option value="custom">自定义</option><option value="meeting">党的会议</option><option value="party">党的纪念</option><option value="holiday">法定假日</option><option value="festival">传统节日</option></select></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="document.getElementById('add-event-modal').classList.remove('show')" style="margin-right:8px">取消</button>
@@ -239,30 +224,12 @@
         <button class="modal-close" id="vol-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>参与党员</label>
-          <select id="vol-member"></select>
-        </div>
-        <div class="form-group">
-          <label>活动名称</label>
-          <input type="text" id="vol-name" placeholder="请输入活动名称">
-        </div>
-        <div class="form-group">
-          <label>日期</label>
-          <input type="date" id="vol-date">
-        </div>
-        <div class="form-group">
-          <label>服务时长（小时）</label>
-          <input type="number" id="vol-hours" placeholder="如：4" step="0.5" min="0.5">
-        </div>
-        <div class="form-group">
-          <label>活动地点</label>
-          <input type="text" id="vol-location" placeholder="请输入活动地点">
-        </div>
-        <div class="form-group">
-          <label>活动描述</label>
-          <textarea id="vol-desc" placeholder="请输入活动内容描述"></textarea>
-        </div>
+        <div class="form-group"><label>参与党员</label><select id="vol-member"></select></div>
+        <div class="form-group"><label>活动名称</label><input type="text" id="vol-name" placeholder="请输入活动名称"></div>
+        <div class="form-group"><label>日期</label><input type="date" id="vol-date"></div>
+        <div class="form-group"><label>服务时长（小时）</label><input type="number" id="vol-hours" placeholder="如：4" step="0.5" min="0.5"></div>
+        <div class="form-group"><label>活动地点</label><input type="text" id="vol-location" placeholder="请输入活动地点"></div>
+        <div class="form-group"><label>活动描述</label><textarea id="vol-desc" placeholder="请输入活动内容描述"></textarea></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="document.getElementById('add-volunteer-modal').classList.remove('show')" style="margin-right:8px">取消</button>
