@@ -1,460 +1,411 @@
-﻿/* ===== 党建信息平台 - 主应用逻辑 ===== */
+﻿/* ===== 党建信息平台 v2.0 - 主应用逻辑 ===== */
 
 ;(function() {
-  'use strict';
+  const app = {};
 
-  // ===== 当前页面 =====
+  // ===== 状态 =====
   let currentPage = 'dashboard';
   let currentMemberId = 1;
-  let calendarDate = new Date(2026, 5, 1); // June 2026
+  let calendarDate = new Date(2026, 5, 1);
+  let nextVolunteerId = 20;
+  let nextCustomEventId = 1;
 
-  // ===== 工具函数 =====
-  function getStageIndex(stage) {
-    return PartyData.stages.indexOf(stage);
-  }
-
-  function getStageColor(stage) {
-    const idx = getStageIndex(stage);
-    if (idx < 0) return '';
-    return 'stage-' + idx;
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
-  }
+  // ===== 工具 =====
+  function getStageIndex(s) { return PartyData.stages.indexOf(s); }
+  function stageColor(s) { const i = getStageIndex(s); return i < 0 ? '' : 'stage-' + i; }
+  function stageColors() { return ['#2e7d32','#1565c0','#e65100','#c62828','#6a1b9a']; }
+  function fmtDate(d) { if (!d) return '-'; const t = new Date(d); return t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日'; }
+  function pad2(n) { return String(n).padStart(2,'0'); }
+  function getMember(id) { return PartyData.members.find(m => m.id === id); }
 
   // ===== 导航 =====
-  function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-      item.addEventListener('click', function() {
-        const page = this.dataset.page;
-        if (page) navigateTo(page);
-      });
+  function init() {
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', function() { if (this.dataset.page) navigateTo(this.dataset.page); });
     });
+    document.getElementById('modal-close').addEventListener('click', () => hide('member-modal'));
+    document.getElementById('member-modal').addEventListener('click', function(e) { if (e.target===this) hide('member-modal'); });
+    document.getElementById('material-modal-close').addEventListener('click', () => hide('material-modal'));
+    document.getElementById('material-modal').addEventListener('click', function(e) { if (e.target===this) hide('material-modal'); });
+    document.getElementById('cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()-1); renderCalendar(); });
+    document.getElementById('cal-next').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()+1); renderCalendar(); });
+    document.getElementById('cal-today').addEventListener('click', () => { calendarDate = new Date(2026,5,1); renderCalendar(); });
+    document.getElementById('add-event-btn').addEventListener('click', () => show('add-event-modal'));
+    document.getElementById('event-close').addEventListener('click', () => hide('add-event-modal'));
+    document.getElementById('add-event-modal').addEventListener('click', function(e) { if (e.target===this) hide('add-event-modal'); });
+    document.getElementById('save-event-btn').addEventListener('click', saveCustomEvent);
+    document.getElementById('add-volunteer-btn').addEventListener('click', openVolunteerModal);
+    document.getElementById('vol-close').addEventListener('click', () => hide('add-volunteer-modal'));
+    document.getElementById('add-volunteer-modal').addEventListener('click', function(e) { if (e.target===this) hide('add-volunteer-modal'); });
+    document.getElementById('save-volunteer-btn').addEventListener('click', saveVolunteer);
+    document.getElementById('search-input').addEventListener('input', doSearch);
+    navigateTo('dashboard');
   }
+
+  function show(id) { document.getElementById(id).classList.add('show'); }
+  function hide(id) { document.getElementById(id).classList.remove('show'); }
 
   function navigateTo(page) {
     currentPage = page;
-    // Update nav
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const navItem = document.querySelector('.nav-item[data-page="' + page + '"]');
+    const navItem = document.querySelector('.nav-item[data-page="'+page+'"]');
     if (navItem) navItem.classList.add('active');
-
-    // Update page header
-    const titles = {
-      dashboard: { title: '首页仪表盘', desc: '党组织建设总体情况概览' },
-      members: { title: '党员管理', desc: '查看和管理党员个人信息' },
-      timeline: { title: '培养历程', desc: '记录党员发展全周期时间线' },
-      calendar: { title: '思政日历', desc: '党的重大日子及传统节假日' },
-      portrait: { title: '数字画像', desc: '党员队伍发展状况数据分析' }
-    };
-    const info = titles[page] || titles.dashboard;
-    document.getElementById('page-title').textContent = info.title;
-    document.getElementById('page-desc').textContent = info.desc;
-
-    // Show/hide pages
+    const titles = { dashboard:['首页仪表盘','党组织建设总体情况概览'], members:['党员管理','查看和管理党员个人信息'], timeline:['培养历程','记录党员发展全周期时间线'], calendar:['思政日历','党的重大日子、会议及节假日'], portrait:['数字画像','党员队伍发展状况数据分析'] };
+    const t = titles[page] || titles.dashboard;
+    document.getElementById('page-title').textContent = t[0];
+    document.getElementById('page-desc').textContent = t[1];
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-    const target = document.getElementById('page-' + page);
-    if (target) target.classList.add('active');
-
-    // Render
-    switch(page) {
-      case 'dashboard': renderDashboard(); break;
-      case 'members': renderMembers(); break;
-      case 'timeline': renderTimeline(); break;
-      case 'calendar': renderCalendar(); break;
-      case 'portrait': renderPortrait(); break;
-    }
+    const p = document.getElementById('page-'+page);
+    if (p) p.classList.add('active');
+    if (page==='dashboard') renderDashboard();
+    else if (page==='members') renderMembers();
+    else if (page==='timeline') renderTimeline();
+    else if (page==='calendar') renderCalendar();
+    else if (page==='portrait') renderPortrait();
   }
 
-  // ===== 首页仪表盘 =====
+  // ==================== 仪表盘 ====================
   function renderDashboard() {
     const members = PartyData.members;
-    const stageCounts = {};
-    PartyData.stages.forEach(s => stageCounts[s] = 0);
-    members.forEach(m => { stageCounts[m.stage] = (stageCounts[m.stage] || 0) + 1; });
-
-    // Stats cards
     document.getElementById('stat-total').textContent = members.length;
 
-    const statsContainer = document.getElementById('stat-details');
-    statsContainer.innerHTML = PartyData.stages.map((s, i) => {
-      const count = stageCounts[s] || 0;
-      const colors = ['#2e7d32','#1565c0','#e65100','#c62828','#6a1b9a'];
-      return `
-        <div class="stat-card">
-          <div class="stat-label">${s}</div>
-          <div class="stat-value" style="color:${colors[i]}">${count}</div>
-          <div class="stat-sub">占比 ${(count/members.length*100).toFixed(1)}%</div>
-        </div>
-      `;
+    const sc = {}; PartyData.stages.forEach(s => sc[s]=0);
+    members.forEach(m => sc[m.stage]++);
+    const colors = stageColors();
+    const container = document.getElementById('stat-details');
+    container.innerHTML = PartyData.stages.map((s,i) =>
+      '<div class="stat-card"><div class="stat-label">'+s+'</div><div class="stat-value" style="color:'+colors[i]+'">'+(sc[s]||0)+'</div><div class="stat-sub">占比 '+((sc[s]/members.length*100)||0).toFixed(1)+'%</div></div>'
+    ).join('');
+
+    // 小型环形图
+    const labels = PartyData.stages;
+    const data = labels.map(l => sc[l]||0);
+    renderDonut('dash-stage-ring', data, labels, colors, {size:140, innerPct:55, showCenter:true});
+
+    // 图例
+    const total = data.reduce((a,b)=>a+b,0)||1;
+    const leg = document.getElementById('dash-stage-legend');
+    leg.innerHTML = labels.map((l,i) =>
+      '<div class="legend-row"><span class="legend-dot-sm" style="background:'+colors[i]+'"></span><span class="name">'+l+'</span><span class="val">'+(data[i]||0)+'</span><span class="pct">'+(data[i]/total*100).toFixed(1)+'%</span></div>'
+    ).join('');
+
+    // 近期活动
+    const sorted = [...members].sort((a,b)=>(b.timeline[b.timeline.length-1].date||'').localeCompare(a.timeline[a.timeline.length-1].date||'')).slice(0,5);
+    document.getElementById('recent-members').innerHTML = sorted.map(m => {
+      const last = m.timeline[m.timeline.length-1];
+      return '<tr><td>'+m.name+'</td><td>'+m.department+'</td><td><span class="stage-tag '+stageColor(m.stage)+'">'+m.stage+'</span></td><td>'+fmtDate(last.date)+'</td><td><span class="tag '+(m.timeline.length>=3?'tag-green':m.timeline.length>=2?'tag-orange':'tag-blue')+'">'+m.timeline.length+'/'+PartyData.stages.length+'阶段</span></td></tr>';
     }).join('');
 
-    // Recent members
-    const recentList = document.getElementById('recent-members');
-    const sorted = [...members].sort((a, b) => {
-      const al = a.timeline[a.timeline.length-1].date;
-      const bl = b.timeline[b.timeline.length-1].date;
-      return bl.localeCompare(al);
-    }).slice(0, 5);
-
-    recentList.innerHTML = sorted.map(m => {
-      const lastStage = m.timeline[m.timeline.length-1];
-      return `
-        <tr>
-          <td>${m.name}</td>
-          <td>${m.department}</td>
-          <td><span class="stage-tag ${getStageColor(m.stage)}">${m.stage}</span></td>
-          <td>${formatDate(lastStage.date)}</td>
-          <td>
-            <span class="tag ${m.timeline.length >= 3 ? 'tag-green' : m.timeline.length >= 2 ? 'tag-orange' : 'tag-blue'}">
-              ${m.timeline.length}/${PartyData.stages.length}阶段
-            </span>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    // Upcoming calendar events
-    const upcomingList = document.getElementById('upcoming-events');
-    const now = '2026-06-05';
-    const upcoming = PartyData.calendarEvents
-      .filter(e => e.date >= now)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 5);
-
-    upcomingList.innerHTML = upcoming.map(e => {
-      const typeLabels = { party: '党的纪念', holiday: '法定假日', festival: '传统节日' };
-      const typeColors = { party: 'tag-red', holiday: 'tag-green', festival: 'tag-orange' };
-      return `
-        <tr>
-          <td>${formatDate(e.date)}</td>
-          <td>${e.name}</td>
-          <td><span class="tag ${typeColors[e.type]}">${typeLabels[e.type]}</span></td>
-        </tr>
-      `;
-    }).join('');
+    // 即将到来的日程
+    const now = '2026-06-07';
+    const upcoming = getAllEvents().filter(e => e.date >= now).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);
+    const typeLabels = {party:'党的纪念',holiday:'法定假日',festival:'传统节日',meeting:'党的会议',custom:'自定义'};
+    const typeColors = {party:'tag-red',holiday:'tag-green',festival:'tag-orange',meeting:'tag-purple',custom:'tag-blue'};
+    const typeDots = {party:'party',holiday:'holiday',festival:'festival',meeting:'meeting',custom:'holiday'};
+    document.getElementById('dash-upcoming-list').innerHTML = upcoming.map(e =>
+      '<li><span class="event-mini-dot '+typeDots[e.type]+'"></span><span style="color:#888;font-size:12px">'+e.date.slice(5)+'</span><span style="flex:1">'+e.name+'</span><span class="tag '+typeColors[e.type]+'">'+(typeLabels[e.type]||e.type)+'</span></li>'
+    ).join('');
   }
 
-  // ===== 党员管理 =====
+  // ==================== 环形图 ====================
+  function renderDonut(containerId, data, labels, colors, opts) {
+    opts = opts || {};
+    const size = opts.size || 200;
+    const innerPct = opts.innerPct || 60;
+    const total = data.reduce((a,b)=>a+b,0)||1;
+    let angle = 0;
+    const segments = data.map((v,i) => {
+      if (v===0) return '';
+      const pct = v/total*100;
+      const deg = pct/100*360;
+      const s = colors[i]+' '+angle+'deg '+(angle+deg)+'deg';
+      angle += deg;
+      return s;
+    }).filter(Boolean).join(', ');
+
+    const gradient = segments ? 'conic-gradient('+segments+')' : '#eee';
+    const html = '<div class="donut-ring" style="width:'+size+'px;height:'+size+'px;background:'+gradient+'"><div class="donut-center"><span class="num">'+total+'</span><span class="label">党员总数</span></div></div>';
+    document.getElementById(containerId).innerHTML = html;
+  }
+
+  function getAllEvents() {
+    return [...PartyData.calendarEvents, ...(PartyData.customEvents||[])];
+  }
+
+  // ==================== 党员管理 ====================
   function renderMembers() {
     const tbody = document.getElementById('members-list');
-    tbody.innerHTML = PartyData.members.map(m => {
-      const joinDateDisplay = m.joinDate ? formatDate(m.joinDate) : '进行中';
-      return `
-        <tr style="cursor:pointer" data-id="${m.id}">
-          <td>${m.name}</td>
-          <td>${m.gender}</td>
-          <td>${m.department}</td>
-          <td><span class="stage-tag ${getStageColor(m.stage)}">${m.stage}</span></td>
-          <td>${joinDateDisplay}</td>
-          <td>${m.phone}</td>
-          <td><button class="member-btn" style="font-size:12px;padding:4px 12px">查看详情</button></td>
-        </tr>
-      `;
-    }).join('');
+    tbody.innerHTML = PartyData.members.map(m =>
+      '<tr style="cursor:pointer" data-id="'+m.id+'"><td>'+m.name+'</td><td>'+m.gender+'</td><td>'+m.department+'</td><td><span class="stage-tag '+stageColor(m.stage)+'">'+m.stage+'</span></td><td>'+(m.joinDate?fmtDate(m.joinDate):'进行中')+'</td><td>'+m.phone+'</td><td><button class="member-btn" style="font-size:12px;padding:4px 12px">查看详情</button></td></tr>'
+    ).join('');
+    tbody.querySelectorAll('tr').forEach(el => el.addEventListener('click', function() { showMemberDetail(parseInt(this.dataset.id)); }));
+  }
 
-    // Click to show detail modal
-    tbody.querySelectorAll('tr').forEach(tr => {
-      tr.addEventListener('click', function() {
-        const id = parseInt(this.dataset.id);
-        showMemberDetail(id);
-      });
+  function doSearch() {
+    const q = this.value.trim().toLowerCase();
+    document.querySelectorAll('#members-list tr').forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const match = q==='' || (cells[0]&&cells[0].textContent.toLowerCase().includes(q)) || (cells[2]&&cells[2].textContent.toLowerCase().includes(q));
+      row.style.display = match ? '' : 'none';
     });
   }
 
-  // ===== 党员详情弹窗 =====
+  // ==================== 党员详情 ====================
   function showMemberDetail(id) {
-    const member = PartyData.members.find(m => m.id === id);
-    if (!member) return;
+    const m = getMember(id);
+    if (!m) return;
+    document.getElementById('modal-name').textContent = m.name;
+    document.getElementById('modal-gender').textContent = m.gender;
+    document.getElementById('modal-birth').textContent = m.birth;
+    document.getElementById('modal-dept').textContent = m.department;
+    document.getElementById('modal-phone').textContent = m.phone;
+    document.getElementById('modal-stage').textContent = m.stage;
+    document.getElementById('modal-joindate').textContent = m.joinDate ? fmtDate(m.joinDate) : '尚未转为正式党员';
 
-    document.getElementById('modal-name').textContent = member.name;
-    document.getElementById('modal-gender').textContent = member.gender;
-    document.getElementById('modal-birth').textContent = member.birth;
-    document.getElementById('modal-dept').textContent = member.department;
-    document.getElementById('modal-phone').textContent = member.phone;
-    document.getElementById('modal-stage').textContent = member.stage;
-    document.getElementById('modal-joindate').textContent = member.joinDate ? formatDate(member.joinDate) : '尚未转为正式党员';
-
-    const timelineHTML = member.timeline.map((t, i) => {
-      const isLast = i === member.timeline.length - 1;
-      const isCurrent = isLast && member.stage !== '正式党员';
-      return `
-        <div class="timeline-item ${isLast && member.stage === '正式党员' ? 'completed' : ''} ${isCurrent ? 'current' : ''}">
-          <div class="timeline-dot"></div>
-          <div class="timeline-date">${formatDate(t.date)}</div>
-          <div class="timeline-title">${t.stage}</div>
-          <div class="timeline-materials">
-            ${t.materials.map(m => `<span class="material-tag">${m}</span>`).join('')}
-          </div>
-        </div>
-      `;
+    // 时间线
+    const tlHTML = m.timeline.map((t,i) => {
+      const isLast = i===m.timeline.length-1;
+      const isCur = isLast && m.stage!=='正式党员';
+      return '<div class="timeline-item '+(isLast&&m.stage==='正式党员'?'completed':'')+' '+(isCur?'current':'')+'"><div class="timeline-dot"></div><div class="timeline-date">'+fmtDate(t.date)+'</div><div class="timeline-title">'+t.stage+'</div><div class="timeline-materials"><div class="material-list">'+
+        t.materials.map(mat => {
+          const typeIcon = {document:'📄',form:'📋',report:'📝',certificate:'🏅'};
+          return '<span class="material-chip type-'+mat.type+'" data-member="'+m.id+'" data-stage="'+t.stage+'" data-material="'+mat.name+'"><span class="mat-icon">'+(typeIcon[mat.type]||'📄')+'</span>'+mat.name+'</span>';
+        }).join('')+'</div></div></div>';
     }).join('');
+    document.getElementById('modal-timeline').innerHTML = tlHTML;
 
-    document.getElementById('modal-timeline').innerHTML = timelineHTML;
+    // 志愿活动
+    const vols = (PartyData.volunteerActivities||[]).filter(v => v.memberId === m.id);
+    const volContainer = document.getElementById('modal-volunteers');
+    if (vols.length===0) {
+      volContainer.innerHTML = '<div class="empty-state" style="padding:20px"><p style="font-size:13px">暂无志愿活动记录</p></div>';
+    } else {
+      volContainer.innerHTML = '<table><thead><tr><th>活动名称</th><th>日期</th><th>时长</th><th>地点</th></tr></thead><tbody>'+
+        vols.map(v => '<tr><td>'+v.name+'</td><td>'+fmtDate(v.date)+'</td><td><span class="vol-hours">'+v.hours+'小时</span></td><td>'+v.location+'</td></tr>').join('')+'</tbody></table>';
+    }
 
-    document.getElementById('member-modal').classList.add('show');
+    // 绑定材料点击
+    document.querySelectorAll('#modal-timeline .material-chip').forEach(el => {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const mid = parseInt(this.dataset.member);
+        const stageName = this.dataset.stage;
+        const matName = this.dataset.material;
+        const member = getMember(mid);
+        if (!member) return;
+        const stageObj = member.timeline.find(t => t.stage === stageName);
+        if (!stageObj) return;
+        const mat = stageObj.materials.find(mt => mt.name === matName);
+        if (mat) showMaterialContent(matName, mat.content, mat.type);
+      });
+    });
+
+    show('member-modal');
   }
 
-  // ===== 培养历程 =====
-  function renderTimeline() {
-    const selector = document.getElementById('member-selector');
-    selector.innerHTML = PartyData.members.map(m => `
-      <button class="member-btn ${m.id === currentMemberId ? 'active' : ''}" data-id="${m.id}">${m.name}</button>
-    `).join('');
+  function showMaterialContent(name, content, type) {
+    document.getElementById('material-modal-title').textContent = name;
+    const typeLabels = {document:'文档',form:'表格',report:'思想汇报',certificate:'证书'};
+    const typeTag = '<span class="tag '+(type==='document'?'tag-blue':type==='form'?'tag-green':type==='report'?'tag-orange':'tag-purple')+'" style="margin-left:8px;font-size:11px;vertical-align:middle">'+(typeLabels[type]||type)+'</span>';
+    document.getElementById('material-modal-title').innerHTML = name + typeTag;
+    document.getElementById('material-modal-content').textContent = content;
+    show('material-modal');
+  }
 
-    selector.querySelectorAll('.member-btn').forEach(btn => {
+  // ==================== 培养历程 ====================
+  function renderTimeline() {
+    const sel = document.getElementById('member-selector');
+    sel.innerHTML = PartyData.members.map(m =>
+      '<button class="member-btn '+(m.id===currentMemberId?'active':'')+'" data-id="'+m.id+'">'+m.name+'</button>'
+    ).join('');
+    sel.querySelectorAll('.member-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         currentMemberId = parseInt(this.dataset.id);
-        renderTimelineView();
-        // Update active state
-        selector.querySelectorAll('.member-btn').forEach(b => b.classList.remove('active'));
+        sel.querySelectorAll('.member-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
+        renderTimelineView();
       });
     });
-
     renderTimelineView();
   }
 
   function renderTimelineView() {
-    const member = PartyData.members.find(m => m.id === currentMemberId);
-    if (!member) return;
-
-    document.getElementById('timeline-member-name').textContent = member.name;
-    document.getElementById('timeline-member-dept').textContent = member.department;
-    document.getElementById('timeline-member-current').textContent = member.stage;
-
-    const container = document.getElementById('timeline-container');
-    container.innerHTML = member.timeline.map((t, i) => {
-      const isLast = i === member.timeline.length - 1;
-      const isCurrent = isLast && member.stage !== '正式党员';
-      return `
-        <div class="timeline-item ${isLast && member.stage === '正式党员' ? 'completed' : ''} ${isCurrent ? 'current' : ''}">
-          <div class="timeline-dot"></div>
-          <div class="timeline-date">${formatDate(t.date)}</div>
-          <div class="timeline-title">${t.stage}</div>
-          <div class="timeline-materials">
-            ${t.materials.map(m => `<span class="material-tag">${m}</span>`).join('')}
-          </div>
-        </div>
-      `;
+    const m = getMember(currentMemberId);
+    if (!m) return;
+    document.getElementById('timeline-member-name').textContent = m.name;
+    document.getElementById('timeline-member-dept').textContent = m.department;
+    const sc = document.getElementById('timeline-member-current');
+    sc.textContent = m.stage;
+    sc.className = 'stage-tag '+stageColor(m.stage);
+    document.getElementById('timeline-container').innerHTML = m.timeline.map((t,i) => {
+      const isLast = i===m.timeline.length-1;
+      const isCur = isLast && m.stage!=='正式党员';
+      return '<div class="timeline-item '+(isLast&&m.stage==='正式党员'?'completed':'')+' '+(isCur?'current':'')+'"><div class="timeline-dot"></div><div class="timeline-date">'+fmtDate(t.date)+'</div><div class="timeline-title">'+t.stage+'</div><div class="timeline-materials"><div class="material-list">'+
+        t.materials.map(mat => {
+          const typeIcon = {document:'📄',form:'📋',report:'📝',certificate:'🏅'};
+          return '<span class="material-chip type-'+mat.type+'"><span class="mat-icon">'+(typeIcon[mat.type]||'📄')+'</span>'+mat.name+'</span>';
+        }).join('')+'</div></div></div>';
     }).join('');
   }
 
-  // ===== 思政日历 =====
+  // ==================== 思政日历 ====================
   function renderCalendar() {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-
-    document.getElementById('cal-title').textContent = year + '年' + (month+1) + '月';
-
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-
+    const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+    document.getElementById('cal-title').textContent = y+'年'+(m+1)+'月';
+    const first = new Date(y,m,1).getDay();
+    const dim = new Date(y,m+1,0).getDate();
+    const dimPrev = new Date(y,m,0).getDate();
     const grid = document.getElementById('cal-days');
     grid.innerHTML = '';
 
-    // Previous month days
-    for (let i = firstDay - 1; i >= 0; i--) {
-      const cell = createDayCell(daysInPrevMonth - i, true, year, month - 1);
-      grid.appendChild(cell);
-    }
+    // 所有事件索引
+    const eventMap = {};
+    getAllEvents().forEach(e => {
+      const parts = e.date.split('-');
+      const ey = parseInt(parts[0]), em = parseInt(parts[1])-1, ed = parseInt(parts[2]);
+      const key = ey+'-'+pad2(em+1)+'-'+pad2(ed);
+      if (!eventMap[key]) eventMap[key] = [];
+      eventMap[key].push(e);
+    });
 
-    // Current month days
     const today = new Date();
-    for (let d = 1; d <= daysInMonth; d++) {
-      const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
-      const cell = createDayCell(d, false, year, month, isToday);
+    const dayTypes = {party:'党的纪念',holiday:'法定假日',festival:'传统节日',meeting:'党的会议',custom:'自定义'};
+
+    function addCell(dayNum, isOther, isToday, monthAdjust) {
+      const cell = document.createElement('div');
+      cell.className = 'calendar-day'+(isOther?' other-month':'')+(isToday?' today':'');
+      const num = document.createElement('div');
+      num.className = 'day-number';
+      num.textContent = dayNum;
+      cell.appendChild(num);
+      if (!isOther) {
+        const dateStr = y+'-'+pad2(m+1+monthAdjust)+'-'+pad2(dayNum);
+        const events = eventMap[dateStr] || [];
+        events.forEach(e => {
+          const ev = document.createElement('div');
+          ev.className = 'calendar-event type-'+(e.type==='custom'?'custom':e.type);
+          ev.textContent = e.name;
+          ev.title = dayTypes[e.type]||e.type;
+          cell.appendChild(ev);
+        });
+      }
       grid.appendChild(cell);
     }
 
-    // Next month days to fill grid
-    const totalCells = firstDay + daysInMonth;
-    const remaining = (7 - totalCells % 7) % 7;
-    for (let d = 1; d <= remaining; d++) {
-      const cell = createDayCell(d, true, year, month + 1);
-      grid.appendChild(cell);
-    }
+    for (let i=first-1; i>=0; i--) addCell(dimPrev-i, true, false, -1);
+    for (let d=1; d<=dim; d++) addCell(d, false, y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate(), 0);
+    const rem = (7 - (first+dim)%7) % 7;
+    for (let d=1; d<=rem; d++) addCell(d, true, false, 1);
   }
 
-  function createDayCell(day, isOther, year, month, isToday) {
-    const cell = document.createElement('div');
-    cell.className = 'calendar-day' + (isOther ? ' other-month' : '') + (isToday ? ' today' : '');
-
-    const num = document.createElement('div');
-    num.className = 'day-number';
-    num.textContent = day;
-    cell.appendChild(num);
-
-    // Find events
-    if (!isOther) {
-      const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-      const events = PartyData.calendarEvents.filter(e => e.date === dateStr);
-      events.forEach(e => {
-        const ev = document.createElement('div');
-        ev.className = 'calendar-event type-' + e.type;
-        ev.textContent = e.name;
-        cell.appendChild(ev);
-      });
-    }
-
-    return cell;
+  // ==================== 自定义日程 ====================
+  function saveCustomEvent() {
+    const date = document.getElementById('event-date').value;
+    const name = document.getElementById('event-name').value.trim();
+    const type = document.getElementById('event-type').value;
+    if (!date || !name) { alert('请填写完整的日程信息'); return; }
+    if (!PartyData.customEvents) PartyData.customEvents = [];
+    PartyData.customEvents.push({ date: date, name: name, type: type||'custom' });
+    hide('add-event-modal');
+    document.getElementById('event-date').value = '';
+    document.getElementById('event-name').value = '';
+    renderCalendar();
+    if (currentPage==='dashboard') renderDashboard();
   }
 
-  // ===== 数字画像 =====
+  // ==================== 数字画像 ====================
   function renderPortrait() {
-    renderStageDistribution();
-    renderMaterialProgress();
-    renderStatsSummary();
-  }
+    const members = PartyData.members;
+    const total = members.length;
+    const sc = {}; PartyData.stages.forEach(s => sc[s]=0);
+    members.forEach(m => sc[m.stage]++);
+    const colors = stageColors();
 
-  function renderStageDistribution() {
-    const stageCounts = {};
-    PartyData.stages.forEach(s => stageCounts[s] = 0);
-    PartyData.members.forEach(m => { stageCounts[m.stage]++; });
+    // 统计概览
+    const fullM = members.filter(m => m.stage==='正式党员').length;
+    const inProg = members.filter(m => m.stage!=='正式党员').length;
+    const avgMat = (members.reduce((s,m) => s+m.timeline.reduce((a,t) => a+t.materials.length,0), 0)/total).toFixed(1);
+    const fullCycle = members.filter(m => m.timeline.length>=5).length;
+    const totalVolHours = (PartyData.volunteerActivities||[]).reduce((s,v) => s+v.hours, 0);
+    document.getElementById('stats-summary').innerHTML =
+      '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">'+
+        '<div class="stat-card"><div class="stat-label">党员总数</div><div class="stat-value" style="color:#C41E3A">'+total+'</div></div>'+
+        '<div class="stat-card"><div class="stat-label">已转正</div><div class="stat-value" style="color:#2e7d32">'+fullM+'</div><div class="stat-sub">占比 '+(fullM/total*100).toFixed(1)+'%</div></div>'+
+        '<div class="stat-card"><div class="stat-label">在途培养</div><div class="stat-value" style="color:#1565c0">'+inProg+'</div></div>'+
+        '<div class="stat-card"><div class="stat-label">平均提交材料</div><div class="stat-value" style="color:#e65100;font-size:26px">'+avgMat+'</div><div class="stat-sub">份/人</div></div>'+
+        '<div class="stat-card"><div class="stat-label">完整经历党员</div><div class="stat-value" style="color:#6a1b9a;font-size:26px">'+fullCycle+'</div><div class="stat-sub">已完成转正全流程</div></div>'+
+        '<div class="stat-card"><div class="stat-label">志愿总时长</div><div class="stat-value" style="color:#00838f;font-size:26px">'+totalVolHours+'</div><div class="stat-sub">小时</div></div>'+
+      '</div>';
 
+    // 大环形图
     const labels = PartyData.stages;
-    const data = labels.map(s => stageCounts[s]);
-    const colors = ['#2e7d32','#1565c0','#e65100','#c62828','#6a1b9a'];
+    const data = labels.map(l => sc[l]||0);
+    renderDonut('stage-donut-container', data, labels, colors, {size:220, innerPct:58, showCenter:true});
+    // 图例
+    const ttl = data.reduce((a,b)=>a+b,0)||1;
+    const leg = document.getElementById('stage-donut-legend');
+    leg.innerHTML = labels.map((l,i) =>
+      '<div class="legend-row"><span class="legend-dot-sm" style="background:'+colors[i]+'"></span><span class="name">'+l+'</span><span class="val">'+(data[i]||0)+'人</span><span class="pct">'+(data[i]/ttl*100).toFixed(1)+'%</span></div>'
+    ).join('');
 
-    // Simple bar chart using CSS
-    const container = document.getElementById('stage-chart');
+    // 柱状图
     const maxVal = Math.max(...data, 1);
-    container.innerHTML = `
-      <div style="display:flex;align-items:flex-end;gap:12px;height:260px;padding:0 10px">
-        ${labels.map((l, i) => `
-          <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end">
-            <div style="font-size:13px;font-weight:600;margin-bottom:4px;color:${colors[i]}">${data[i]}</div>
-            <div style="width:100%;max-width:60px;border-radius:6px 6px 0 0;
-                        height:${(data[i]/maxVal)*200}px;background:${colors[i]};
-                        transition:height 0.5s;opacity:0.85"></div>
-            <div style="font-size:11px;color:#888;margin-top:6px;text-align:center">${l}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    const barChart = document.getElementById('stage-bar-chart');
+    barChart.innerHTML = '<div class="bar-chart">'+
+      labels.map((l,i) =>
+        '<div class="bar-col"><div class="bar-value" style="color:'+colors[i]+'">'+(data[i]||0)+'</div><div class="bar-rect" style="height:'+Math.max((data[i]/maxVal)*200,4)+'px;background:'+colors[i]+'"></div><div class="bar-label">'+l+'</div></div>'
+      ).join('')+'</div>';
+
+    // 志愿活动
+    renderVolunteerTable();
   }
 
-  function renderMaterialProgress() {
-    const tbody = document.getElementById('material-progress-body');
-    const totalStages = PartyData.stages.length;
-
-    tbody.innerHTML = PartyData.members.map(m => {
-      const materialsCount = m.timeline.reduce((sum, t) => sum + t.materials.length, 0);
-      const maxPossible = m.timeline.length * 3; // rough max estimate
-      const progress = Math.min(100, Math.round((materialsCount / Math.max(maxPossible, 1)) * 100));
-
-      return `
-        <tr>
-          <td>${m.name}</td>
-          <td><span class="stage-tag ${getStageColor(m.stage)}">${m.stage}</span></td>
-          <td>${m.timeline.length}/${totalStages}</td>
-          <td>${materialsCount} 份</td>
-          <td>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width:${progress}%"></div>
-            </div>
-          </td>
-          <td style="font-size:13px;color:#666">${progress}%</td>
-        </tr>
-      `;
+  function renderVolunteerTable() {
+    const vols = PartyData.volunteerActivities || [];
+    const tbody = document.getElementById('volunteer-table-body');
+    if (vols.length===0) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state" style="padding:32px"><p>暂无志愿活动记录</p></div></td></tr>';
+      return;
+    }
+    const sorted = [...vols].sort((a,b)=>b.date.localeCompare(a.date));
+    tbody.innerHTML = sorted.map(v => {
+      const m = getMember(v.memberId);
+      return '<tr><td>'+v.name+'</td><td>'+(m?m.name:'-')+'</td><td>'+fmtDate(v.date)+'</td><td><span class="vol-hours">'+v.hours+'小时</span></td><td>'+v.location+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteVolunteer('+v.id+')">删除</button></td></tr>';
     }).join('');
   }
 
-  function renderStatsSummary() {
-    const members = PartyData.members;
-    const total = members.length;
-    const fullMembers = members.filter(m => m.stage === '正式党员').length;
-    const inProgress = members.filter(m => m.stage !== '正式党员').length;
-    const avgMaterials = (members.reduce((sum, m) =>
-      sum + m.timeline.reduce((s, t) => s + t.materials.length, 0), 0) / total).toFixed(1);
-    const hasCompleteTimeline = members.filter(m => m.timeline.length >= 5).length;
-
-    const container = document.getElementById('stats-summary');
-    container.innerHTML = `
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
-        <div class="stat-card">
-          <div class="stat-label">党员总数</div>
-          <div class="stat-value" style="color:#C41E3A">${total}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">已转正</div>
-          <div class="stat-value" style="color:#2e7d32">${fullMembers}</div>
-          <div class="stat-sub">占比 ${(fullMembers/total*100).toFixed(1)}%</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">在途培养</div>
-          <div class="stat-value" style="color:#1565c0">${inProgress}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">平均提交材料</div>
-          <div class="stat-value" style="color:#e65100;font-size:26px">${avgMaterials}</div>
-          <div class="stat-sub">份/人</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">完整经历党员</div>
-          <div class="stat-value" style="color:#6a1b9a;font-size:26px">${hasCompleteTimeline}</div>
-          <div class="stat-sub">已完成转正全流程</div>
-        </div>
-      </div>
-    `;
+  function openVolunteerModal() {
+    const sel = document.getElementById('vol-member');
+    sel.innerHTML = PartyData.members.map(m => '<option value="'+m.id+'">'+m.name+'</option>').join('');
+    document.getElementById('vol-date').value = '2026-06-07';
+    document.getElementById('vol-name').value = '';
+    document.getElementById('vol-hours').value = '';
+    document.getElementById('vol-location').value = '';
+    document.getElementById('vol-desc').value = '';
+    show('add-volunteer-modal');
   }
 
-  // ===== 弹窗控制 =====
-  function initModal() {
-    document.getElementById('modal-close').addEventListener('click', () => {
-      document.getElementById('member-modal').classList.remove('show');
-    });
-    document.getElementById('member-modal').addEventListener('click', function(e) {
-      if (e.target === this) this.classList.remove('show');
-    });
+  function saveVolunteer() {
+    const memberId = parseInt(document.getElementById('vol-member').value);
+    const name = document.getElementById('vol-name').value.trim();
+    const date = document.getElementById('vol-date').value;
+    const hours = parseFloat(document.getElementById('vol-hours').value);
+    const location = document.getElementById('vol-location').value.trim();
+    const desc = document.getElementById('vol-desc').value.trim();
+    if (!name||!date||!hours||!location) { alert('请填写完整信息'); return; }
+    PartyData.volunteerActivities.push({ id: nextVolunteerId++, memberId, name, date, hours, location, description: desc });
+    hide('add-volunteer-modal');
+    renderVolunteerTable();
+    renderPortrait();
   }
 
-  // ===== 日历导航 =====
-  function initCalendarNav() {
-    document.getElementById('cal-prev').addEventListener('click', () => {
-      calendarDate.setMonth(calendarDate.getMonth() - 1);
-      renderCalendar();
-    });
-    document.getElementById('cal-next').addEventListener('click', () => {
-      calendarDate.setMonth(calendarDate.getMonth() + 1);
-      renderCalendar();
-    });
-    document.getElementById('cal-today').addEventListener('click', () => {
-      calendarDate = new Date(2026, 5, 1); // June 2026
-      renderCalendar();
-    });
-  }
+  window.deleteVolunteer = function(id) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    PartyData.volunteerActivities = (PartyData.volunteerActivities||[]).filter(v => v.id !== id);
+    renderVolunteerTable();
+    renderPortrait();
+  };
 
-  // ===== 搜索功能 =====
-  function initSearch() {
-    const searchInput = document.getElementById('search-input');
-    if (!searchInput) return;
-    searchInput.addEventListener('input', function() {
-      const q = this.value.trim().toLowerCase();
-      const rows = document.querySelectorAll('#members-list tr');
-      rows.forEach(row => {
-        const name = row.querySelector('td:first-child');
-        const dept = row.querySelector('td:nth-child(3)');
-        const match = (name && name.textContent.toLowerCase().includes(q)) ||
-                      (dept && dept.textContent.toLowerCase().includes(q));
-        row.style.display = match ? '' : 'none';
-      });
-    });
-  }
-
-  // ===== 初始化 =====
-  function init() {
-    initNavigation();
-    initModal();
-    initCalendarNav();
-    initSearch();
-    navigateTo('dashboard');
-  }
-
+  // ===== 启动 =====
   document.addEventListener('DOMContentLoaded', init);
 })();
